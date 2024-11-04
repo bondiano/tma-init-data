@@ -3,6 +3,7 @@ name = "tma-init-data"
 description = "Utilities to work with Telegram Mini Apps init data."
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 authors = ["Vassiliy Kuzenkiv <batbondik0@gmail.com>"]
 keywords = ["tma", "telegram", "mini-apps", "init-data", "utilities"]
 
