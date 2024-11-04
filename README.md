@@ -3,16 +3,7 @@
 The crate provides utilities to work with Telegram Mini Apps init data.
 
 [![Crates.io](https://img.shields.io/crates/v/tma-init-data)](https://crates.io/crates/tma-init-data)
-[![codecov](https://codecov.io/gh/bondiano/tma-init-data/graph/badge.svg?token=wnjlCIKacN)](https://codecov.io/gh/bondiano/tma-init-data)
-
-## Usage
-
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-tma-init-data = "0.1"
-```
+[![codecov](https://codecov.io/gh/bondiano/tma-init-data/branch/master/graph/badge.svg?token=wnjlCIKacN)](https://codecov.io/gh/bondiano/tma-init-data)
 
 ## Available functions
 

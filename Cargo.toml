@@ -1,7 +1,7 @@
 [package]
 name = "tma-init-data"
 description = "Utilities to work with Telegram Mini Apps init data."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 authors = ["Vassiliy Kuzenkiv <batbondik0@gmail.com>"]
@@ -12,6 +12,7 @@ name = "tma_init_data"
 path = "src/lib.rs"
 
 [dependencies]
+hex = "0.4.3"
 hmac = "0.12.1"
 phf = { version = "0.11.2", features = ["macros"] }
 serde = { version = "1.0.214", features = ["derive"] }

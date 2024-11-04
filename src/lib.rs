@@ -209,12 +209,8 @@ pub fn sign(
 
     // Get result and convert to hex string
     let result = imp_hmac.finalize().into_bytes();
-    let result = result
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>();
 
-    Ok(result)
+    Ok(hex::encode(result))
 }
 
 pub fn sign_query_string(
@@ -304,12 +300,8 @@ pub fn validate(
     pairs.sort();
 
     // Calculate signature
-    let calculated_hash = sign_query_string(
-        init_data,
-        bot_token,
-        auth_date.unwrap_or_else(|| UNIX_EPOCH),
-    )
-    .map_err(|_| ValidationError::UnexpectedFormat)?;
+    let calculated_hash = sign_query_string(init_data, bot_token, auth_date.unwrap_or(UNIX_EPOCH))
+        .map_err(|_| ValidationError::UnexpectedFormat)?;
 
     // In case our sign is not equal to found one, we should throw an error
     if calculated_hash != hash {
