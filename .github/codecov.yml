@@ -1,0 +1,15 @@
+coverage:
+  range: 60..100
+  round: nearest
+  precision: 2
+  status:
+    project:
+      default:
+        threshold: 3%
+
+ignore:
+  - "tests"
+
+comment:
+  layout: "files"
+  require_changes: true
