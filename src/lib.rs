@@ -128,7 +128,7 @@ pub enum ParseDataError {
 }
 
 /// Converts passed init data presented as query string to InitData object.
-pub fn parse(init_data: String) -> Result<InitData, ParseDataError> {
+pub fn parse(init_data: &str) -> Result<InitData, ParseDataError> {
     // Parse passed init data as query string
     let url = Url::parse(&format!("http://dummy.com?{}", init_data))
         .map_err(ParseDataError::InvalidQueryString)?;
@@ -179,7 +179,7 @@ pub enum SignError {
 /// technical parameters as "hash" and "auth_date".
 pub fn sign(
     payload: HashMap<String, String>,
-    bot_token: String,
+    bot_token: &str,
     auth_time: SystemTime,
 ) -> Result<String, SignError> {
     let mut pairs = payload
@@ -224,8 +224,8 @@ pub fn sign(
 }
 
 pub fn sign_query_string(
-    qs: String,
-    bot_token: String,
+    qs: &str,
+    bot_token: &str,
     auth_time: SystemTime,
 ) -> Result<String, SignError> {
     let url =
@@ -264,8 +264,8 @@ pub enum ValidationError {
 /// * `exp_in` - maximum init data lifetime. It is strongly recommended to use this
 ///   parameter. In case exp duration is None, function does not check if parameters are expired.
 pub fn validate(
-    init_data: String,
-    bot_token: String,
+    init_data: &str,
+    bot_token: &str,
     exp_in: Duration,
 ) -> Result<bool, ValidationError> {
     // Parse passed init data as query string
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn test_parse_valid_data() {
         let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2&start_param=abc";
-        let result = parse(init_data.to_string());
+        let result = parse(init_data);
         assert!(result.is_ok());
         let data = result.unwrap();
         assert_eq!(
@@ -365,14 +365,14 @@ mod tests {
     #[test]
     fn test_parse_invalid_data() {
         let init_data = "invalid data";
-        let result = parse(init_data.to_string());
+        let result = parse(init_data);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_sign_query_string() {
-        let qs = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2".to_string();
-        let test_bot_token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8".to_string();
+        let qs = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2";
+        let test_bot_token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let test_sign_hash =
             "c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2".to_string();
         let auth_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1662771648);
@@ -384,8 +384,8 @@ mod tests {
 
     #[test]
     fn test_sign_query_string_no_date() {
-        let qs = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D".to_string();
-        let test_bot_token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8".to_string();
+        let qs = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D";
+        let test_bot_token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let test_sign_hash =
             "c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2".to_string();
         let auth_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1662771648);
@@ -397,8 +397,8 @@ mod tests {
 
     #[test]
     fn test_validate_success() {
-        let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2".to_string();
-        let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8".to_string();
+        let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2";
+        let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let exp_in = Duration::from_secs(1662771648);
 
         assert!(validate(init_data, token, exp_in).is_ok());
@@ -407,8 +407,8 @@ mod tests {
     #[test]
     fn test_validate_expired() {
         let init_data =
-            "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2.".to_string();
-        let token = "your_bot_token".to_string();
+            "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2";
+        let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let exp_in = Duration::from_secs(86400);
 
         assert!(matches!(
@@ -419,8 +419,8 @@ mod tests {
 
     #[test]
     fn test_validate_missing_hash() {
-        let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648".to_string();
-        let token = "your_bot_token".to_string();
+        let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648";
+        let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let exp_in = Duration::from_secs(86400);
 
         assert!(matches!(
