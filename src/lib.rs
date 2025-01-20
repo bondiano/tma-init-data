@@ -136,6 +136,7 @@ pub fn parse<T: AsRef<str>>(init_data: T) -> Result<InitData, ParseDataError> {
     // Create a static HashSet of properties that should always be interpreted as strings
     static STRING_PROPS: phf::Set<&'static str> = phf::phf_set! {
         "start_param",
+        "chat_instance",
     };
 
     // Build JSON pairs
