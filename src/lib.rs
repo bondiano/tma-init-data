@@ -43,14 +43,14 @@ pub struct InitData {
 
     /// A global identifier indicating the chat from which the Mini Apps was opened.
     /// Returned only for applications opened by direct link.
-    pub chat_instance: Option<String>,
+    pub chat_instance: Option<u64>,
 
     /// Initialization data signature.
     pub hash: String,
 
     /// The unique session ID of the Mini App.
     /// Used in the process of sending a message via the method answerWebAppQuery.
-    pub query_id: String,
+    pub query_id: Option<String>,
 
     /// An object containing data about the chat partner of the current user in the chat where the bot was launched via the attachment menu.
     /// Returned only for private chats and only for Mini Apps launched via the attachment menu.
@@ -343,7 +343,7 @@ mod tests {
                 chat_instance: None,
                 hash: "c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2"
                     .to_string(),
-                query_id: "AAHdF6IQAAAAAN0XohDhrOrc".to_string(),
+                query_id: Some("AAHdF6IQAAAAAN0XohDhrOrc".to_string()),
                 receiver: None,
                 start_param: Some("abc".to_string()),
                 user: Some(User {
