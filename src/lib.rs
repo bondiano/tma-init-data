@@ -128,9 +128,9 @@ pub enum ParseDataError {
 }
 
 /// Converts passed init data presented as query string to InitData object.
-pub fn parse(init_data: &str) -> Result<InitData, ParseDataError> {
+pub fn parse<T: AsRef<str>>(init_data: T) -> Result<InitData, ParseDataError> {
     // Parse passed init data as query string
-    let url = Url::parse(&format!("http://dummy.com?{}", init_data))
+    let url = Url::parse(&format!("http://dummy.com?{}", init_data.as_ref()))
         .map_err(ParseDataError::InvalidQueryString)?;
 
     // Create a static HashSet of properties that should always be interpreted as strings
@@ -177,9 +177,9 @@ pub enum SignError {
 
 /// Sign signs passed payload using specified key. Function removes such
 /// technical parameters as "hash" and "auth_date".
-pub fn sign(
+pub fn sign<T: AsRef<str>>(
     payload: HashMap<String, String>,
-    bot_token: &str,
+    bot_token: T,
     auth_time: SystemTime,
 ) -> Result<String, SignError> {
     let mut pairs = payload
@@ -209,7 +209,7 @@ pub fn sign(
     // First HMAC: Create secret key using "WebAppData"
     let mut sk_hmac = HmacSha256::new_from_slice("WebAppData".as_bytes())
         .map_err(|_| SignError::CouldNotProcessSignature)?;
-    sk_hmac.update(bot_token.as_bytes());
+    sk_hmac.update(bot_token.as_ref().as_bytes());
     let secret_key = sk_hmac.finalize().into_bytes();
 
     // Second HMAC: Sign the payload using the secret key
@@ -223,13 +223,13 @@ pub fn sign(
     Ok(hex::encode(result))
 }
 
-pub fn sign_query_string(
-    qs: &str,
-    bot_token: &str,
+pub fn sign_query_string<T: AsRef<str>>(
+    qs: T,
+    bot_token: T,
     auth_time: SystemTime,
 ) -> Result<String, SignError> {
-    let url =
-        Url::parse(&format!("http://dummy.com?{}", qs)).map_err(SignError::InvalidQueryString)?;
+    let url = Url::parse(&format!("http://dummy.com?{}", qs.as_ref()))
+        .map_err(SignError::InvalidQueryString)?;
 
     let mut params: HashMap<String, String> = HashMap::new();
     for (key, value) in url.query_pairs() {
@@ -263,13 +263,13 @@ pub enum ValidationError {
 /// * `token` - TWA bot secret token which was used to create init data
 /// * `exp_in` - maximum init data lifetime. It is strongly recommended to use this
 ///   parameter. In case exp duration is None, function does not check if parameters are expired.
-pub fn validate(
-    init_data: &str,
-    bot_token: &str,
+pub fn validate<T: AsRef<str>>(
+    init_data: T,
+    bot_token: T,
     exp_in: Duration,
 ) -> Result<bool, ValidationError> {
     // Parse passed init data as query string
-    let url = Url::parse(&format!("http://dummy.com?{}", init_data))
+    let url = Url::parse(&format!("http://dummy.com?{}", init_data.as_ref()))
         .map_err(ValidationError::InvalidQueryString)?;
 
     let mut auth_date: Option<SystemTime> = None;
@@ -401,7 +401,7 @@ mod tests {
         let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let exp_in = Duration::from_secs(1662771648);
 
-        assert!(validate(init_data, token, exp_in).is_ok());
+        assert!(matches!(validate(init_data, token, exp_in), Ok(true)));
     }
 
     #[test]
