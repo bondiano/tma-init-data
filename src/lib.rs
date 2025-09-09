@@ -43,7 +43,7 @@ pub struct InitData {
 
     /// A global identifier indicating the chat from which the Mini Apps was opened.
     /// Returned only for applications opened by direct link.
-    pub chat_instance: Option<u64>,
+    pub chat_instance: Option<i64>,
 
     /// Initialization data signature.
     pub hash: String,
@@ -136,7 +136,6 @@ pub fn parse<T: AsRef<str>>(init_data: T) -> Result<InitData, ParseDataError> {
     // Create a static HashSet of properties that should always be interpreted as strings
     static STRING_PROPS: phf::Set<&'static str> = phf::phf_set! {
         "start_param",
-        "chat_instance",
     };
 
     // Build JSON pairs
