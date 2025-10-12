@@ -22,9 +22,15 @@ use std::{
 
 type HmacSha256 = Hmac<Sha256>;
 
+const HASH_FIELD: &str = "hash";
+const AUTH_DATE_FIELD: &str = "auth_date";
+
+const DUMMY_URL_BASE: &str = "http://dummy.com";
+const WEB_APP_DATA_KEY: &[u8] = b"WebAppData";
+
 /// Contains launch parameters data
 /// https://docs.telegram-mini-apps.com/platform/init-data#parameters-list
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
 pub struct InitData {
     /// The date the initialization data was created. Is a number representing a
     /// Unix timestamp.
@@ -66,7 +72,7 @@ pub struct InitData {
 
 /// Describes user information:
 /// https://docs.telegram-mini-apps.com/launch-parameters/init-data#user
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
 pub struct User {
     /// True, if this user added the bot to the attachment menu.
     pub added_to_attachment_menu: Option<bool>,
@@ -102,7 +108,7 @@ pub struct User {
 
 /// Describes the chat information.
 /// https://docs.telegram-mini-apps.com/platform/init-data#chat
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
 pub struct Chat {
     /// Chat ID
     pub id: i64,
@@ -130,45 +136,67 @@ pub enum ParseDataError {
 /// Converts passed init data presented as query string to InitData object.
 pub fn parse<T: AsRef<str>>(init_data: T) -> Result<InitData, ParseDataError> {
     // Parse passed init data as query string
-    let url = Url::parse(&format!("http://dummy.com?{}", init_data.as_ref()))
-        .map_err(ParseDataError::InvalidQueryString)?;
+    let init_data_ref = init_data.as_ref();
+
+    // Pre-allocate string capacity: base URL + "?" + query string
+    let mut url_string = String::with_capacity(DUMMY_URL_BASE.len() + 1 + init_data_ref.len());
+    url_string.push_str(DUMMY_URL_BASE);
+    url_string.push('?');
+    url_string.push_str(init_data_ref);
+
+    let url = Url::parse(&url_string).map_err(ParseDataError::InvalidQueryString)?;
 
     // Create a static HashSet of properties that should always be interpreted as strings
     static STRING_PROPS: phf::Set<&'static str> = phf::phf_set! {
         "start_param",
     };
 
-    // Build JSON pairs
-    let mut pairs = Vec::new();
-    for (key, value) in url.query_pairs() {
-        let val = value.to_string();
+    let query_pairs = url.query_pairs();
+    let estimated_size = query_pairs.count() * 20;
+
+    // Need to collect again since count() consumes iterator
+    let query_pairs = url.query_pairs();
+    let mut json_str = String::with_capacity(2 + estimated_size); // 2 for {}
+    json_str.push('{');
+
+    let mut first = true;
+    for (key, value) in query_pairs {
+        if !first {
+            json_str.push(',');
+        }
+        first = false;
+
+        json_str.push('"');
+        json_str.push_str(&key);
+        json_str.push_str("\":");
 
         // Determine the format based on whether it's a string prop or valid JSON
-        let formatted_pair = if STRING_PROPS.contains(key.as_ref()) {
+        if STRING_PROPS.contains(key.as_ref()) {
             // Use string format for specified string properties
-            format!("\"{}\":\"{}\"", key, val)
+            json_str.push('"');
+            json_str.push_str(&value);
+            json_str.push('"');
         } else {
             // Check if the value is valid JSON
-            if serde_json::from_str::<serde_json::Value>(&val).is_ok() {
+            if serde_json::from_str::<serde_json::Value>(&value).is_ok() {
                 // Use raw format for valid JSON
-                format!("\"{}\":{}", key, val)
+                json_str.push_str(&value);
             } else {
                 // Use string format for non-JSON values
-                format!("\"{}\":\"{}\"", key, val)
+                json_str.push('"');
+                json_str.push_str(&value);
+                json_str.push('"');
             }
-        };
-
-        pairs.push(formatted_pair);
+        }
     }
 
-    // Create final JSON string
-    let json_str = format!("{{{}}}", pairs.join(","));
+    json_str.push('}');
 
     // Deserialize JSON into InitData struct
     serde_json::from_str(&json_str).map_err(ParseDataError::InvalidSignature)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum SignError {
     CouldNotProcessSignature,
     CouldNotProcessAuthTime(SystemTimeError),
@@ -186,7 +214,7 @@ pub fn sign<T: AsRef<str>>(
         .iter()
         .filter_map(|(k, v)| {
             // Skip technical fields.
-            if k == "hash" || k == "auth_date" {
+            if k == HASH_FIELD || k == AUTH_DATE_FIELD {
                 None
             } else {
                 Some(format!("{}={}", k, v))
@@ -207,7 +235,7 @@ pub fn sign<T: AsRef<str>>(
     let payload = pairs.join("\n");
 
     // First HMAC: Create secret key using "WebAppData"
-    let mut sk_hmac = HmacSha256::new_from_slice("WebAppData".as_bytes())
+    let mut sk_hmac = HmacSha256::new_from_slice(WEB_APP_DATA_KEY)
         .map_err(|_| SignError::CouldNotProcessSignature)?;
     sk_hmac.update(bot_token.as_ref().as_bytes());
     let secret_key = sk_hmac.finalize().into_bytes();
@@ -228,7 +256,7 @@ pub fn sign_query_string<T: AsRef<str>>(
     bot_token: T,
     auth_time: SystemTime,
 ) -> Result<String, SignError> {
-    let url = Url::parse(&format!("http://dummy.com?{}", qs.as_ref()))
+    let url = Url::parse(&format!("{}?{}", DUMMY_URL_BASE, qs.as_ref()))
         .map_err(SignError::InvalidQueryString)?;
 
     let mut params: HashMap<String, String> = HashMap::new();
@@ -269,7 +297,7 @@ pub fn validate<T: AsRef<str>>(
     exp_in: Duration,
 ) -> Result<bool, ValidationError> {
     // Parse passed init data as query string
-    let url = Url::parse(&format!("http://dummy.com?{}", init_data.as_ref()))
+    let url = Url::parse(&format!("{}?{}", DUMMY_URL_BASE, init_data.as_ref()))
         .map_err(ValidationError::InvalidQueryString)?;
 
     let mut auth_date: Option<SystemTime> = None;
@@ -279,11 +307,11 @@ pub fn validate<T: AsRef<str>>(
     // Iterate over all key-value pairs of parsed parameters
     for (key, value) in url.query_pairs() {
         // Store found sign
-        if key == "hash" {
+        if key == HASH_FIELD {
             hash = Some(value.to_string());
             continue;
         }
-        if key == "auth_date" {
+        if key == AUTH_DATE_FIELD {
             if let Ok(timestamp) = value.parse::<u64>() {
                 auth_date = Some(UNIX_EPOCH + Duration::from_secs(timestamp));
             }
@@ -406,8 +434,7 @@ mod tests {
 
     #[test]
     fn test_validate_expired() {
-        let init_data =
-            "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2";
+        let init_data = "query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%7D&auth_date=1662771648&hash=c501b71e775f74ce10e377dea85a7ea24ecd640b223ea86dfe453e0eaed2e2b2";
         let token = "5768337691:AAH5YkoiEuPk8-FZa32hStHTqXiLPtAEhx8";
         let exp_in = Duration::from_secs(86400);
 
