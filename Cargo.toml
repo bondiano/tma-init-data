@@ -21,7 +21,7 @@ sha2 = "0.10.9"
 url = "2.5.7"
 
 [dev-dependencies]
-criterion = { version = "0.7.0", features = ["html_reports"] }
+criterion = { version = "0.8.0", features = ["html_reports"] }
 
 [[bench]]
 name = "parse_benchmark"
